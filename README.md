@@ -56,7 +56,7 @@ Built on top of the low level wrapper is a more usable api to perform common USB
 def list_usb_devices(self, **kwargs):
 
 # vid and pid must be str, returns True if device was correctly initialized and False otherwise
-def init_winusb_device(self, vid, pid): 
+def init_winusb_device(self, vid, pid):
 
 # Returns True if device was correctly closed and False otherwise.
 def close_winusb_device(self):
@@ -82,7 +82,7 @@ def query_pipe(self, pipe_index):
 # it returns a dict with the response and with the buffer under the keywords 'result' and 'buffer'
 def control_transfer(self, setup_packet, buff=None):
 
-#Send Bulk data to the Usb device, write_buffer must be a str buffer
+#Send Bulk data to the Usb device, write_buffer must be of type "bytes"
 def write(self, pipe_id, write_buffer):
 
 #Read Bulk data from the Usb device, Returns of a buffer not greater than length_buffer length
@@ -99,8 +99,33 @@ pid = "pid_device"
 api = WinUsbPy()
 result = api.list_usb_devices(deviceinterface=True, present=True)
 if result:
-  if api.init_winusb_device(pl2303_vid, pl2303_pid):
-    api.write(0x02, "hello")
+  if api.init_winusb_device(vid, pid):
+
+    # print device interface 0 descriptors
+    interface_descriptor = api.query_interface_settings(0)
+    if interface_descriptor != None:
+        print("bLength: " + str(interface_descriptor.b_length))
+        print("bDescriptorType: " + str(interface_descriptor.b_descriptor_type))
+        print("bInterfaceNumber: " + str(interface_descriptor.b_interface_number))
+        print("bAlternateSetting: " + str(interface_descriptor.b_alternate_setting))
+        print("bNumEndpoints " + str(interface_descriptor.b_num_endpoints))
+        print("bInterfaceClass " + str(interface_descriptor.b_interface_class))
+        print("bInterfaceSubClass: " + str(interface_descriptor.b_interface_sub_class))
+        print("bInterfaceProtocol: " + str(interface_descriptor.b_interface_protocol))
+        print("iInterface: " + str(interface_descriptor.i_interface))
+
+    # print device endpoint descriptors
+    pipe_info_list = map(api.query_pipe, range(interface_descriptor.b_num_endpoints))
+    for item in pipe_info_list:
+        print("PipeType: " + str(item.pipe_type))
+        print("PipeId: " + str(item.pipe_id))
+        print("MaximumPacketSize: " + str(item.maximum_packet_size))
+        print("Interval: " + str(item.interval))
+
+    api.write(0x02, b"hello") # send bulk packet on OUT endpoint 2
+
+    # close
+    api.close_winusb_device()
 ```
 
 Real examples

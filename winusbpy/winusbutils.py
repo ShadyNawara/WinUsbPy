@@ -53,7 +53,7 @@ def get_winusb_functions(windll):
     # BOOL __stdcall WinUsb_ControlTransfer(_In_ WINUSB_INTERFACE_HANDLE InterfaceHandle,_In_ WINUSB_SETUP_PACKET SetupPacket, _Out_ PUCHAR Buffer,_In_ ULONG BufferLength,_Out_opt_  PULONG LengthTransferred,_In_opt_  LPOVERLAPPED Overlapped);
     winusb_functions[WinUsb_ControlTransfer] = windll.WinUsb_ControlTransfer
     # winusb_restypes[WinUsb_ControlTransfer] = BOOL
-    # winusb_argtypes[WinUsb_ControlTransfer] = [c_void_p, UsbSetupPacket, POINTER(c_ubyte), c_ulong, POINTER(c_ulong), LpOverlapped] 
+    # winusb_argtypes[WinUsb_ControlTransfer] = [c_void_p, UsbSetupPacket, POINTER(c_ubyte), c_ulong, POINTER(c_ulong), LpOverlapped]
 
     # BOOL __stdcall WinUsb_GetDescriptor(_In_ WINUSB_INTERFACE_HANDLE InterfaceHandle,_In_ UCHAR DescriptorType,_In_ UCHAR Index,_In_ USHORT LanguageID,_Out_ PUCHAR Buffer,_In_ ULONG BufferLength,_Out_ PULONG LengthTransferred);
     winusb_functions[WinUsb_GetDescriptor] = windll.WinUsb_GetDescriptor
@@ -108,12 +108,12 @@ def get_winusb_functions(windll):
     winusb_restypes[WinUsb_GetAssociatedInterface] = BOOL
     winusb_argtypes[WinUsb_GetAssociatedInterface] = [c_void_p, c_ubyte, POINTER(c_void_p)]
 
-    winusb_dict["functions"] = winusb_functions 
+    winusb_dict["functions"] = winusb_functions
     winusb_dict["restypes"] = winusb_restypes
     winusb_dict["argtypes"] = winusb_argtypes
     return winusb_dict
 
-    
+
 def get_kernel32_functions(kernel32):
     kernel32_dict = {}
     kernel32_functions = {}
@@ -209,6 +209,10 @@ def get_setupapi_functions(setupapi):
 
 
 def is_device(vid, pid, path, name=None):
+    # this is not working
+    # not used
+    # replaced by extract_device_from_vid_pid
+
     if name and name.lower() == path.lower():
         return True
     if vid and pid:

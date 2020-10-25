@@ -105,17 +105,29 @@ class WinUsbPy(object):
         return self.device_paths
 
     def find_device(self, path):
-        return is_device(self._name, self._vid, self._pid, path)
+        return is_device(self._vid, self._pid, path, self._name)
 
-    def init_winusb_device(self, name, vid, pid):
+    def extract_device_from_vid_pid(self, vid, pid, dev_list):
+        name = None
+        path = None
+
+        for dev in dev_list:
+            dev_path = dev_list[dev]
+            if( dev_path.find("vid_{:04x}&pid_{:04x}".format( int(str(vid), 16), int(str(pid), 16)) ) != -1 ):
+                # dev found
+                name = dev
+                path = dev_path
+                break
+
+        return (name, path)
+
+    def init_winusb_device(self, vid, pid):
         self._vid = vid
         self._pid = pid
-        self._name = name
-        try:
-            ftr = filter(self.find_device, self.device_paths)
-            paths = [p for p in ftr]
-            path = self.device_paths[paths[0]]
-        except IndexError:
+
+        # extract device (name, path) from device_list
+        _ , path = self.extract_device_from_vid_pid(vid, pid, self.device_paths)
+        if(path == None):
             return False
 
         self.handle_file = self.api.exec_function_kernel32(CreateFile, path, GENERIC_WRITE | GENERIC_READ,
@@ -207,14 +219,14 @@ class WinUsbPy(object):
     def write(self, pipe_id, write_buffer):
         write_buffer = create_string_buffer(write_buffer)
         written = c_ulong(0)
-        self.api.exec_function_winusb(WinUsb_WritePipe, self.handle_winusb[self._index], c_ubyte(pipe_id), write_buffer,
+        self.api.exec_function_winusb(WinUsb_WritePipe, self.handle_winusb, c_ubyte(pipe_id), write_buffer,
                                       c_ulong(len(write_buffer) - 1), byref(written), None)
         return written.value
 
     def read(self, pipe_id, length_buffer):
         read_buffer = create_string_buffer(length_buffer)
         read = c_ulong(0)
-        result = self.api.exec_function_winusb(WinUsb_ReadPipe, self.handle_winusb[self._index], c_ubyte(pipe_id),
+        result = self.api.exec_function_winusb(WinUsb_ReadPipe, self.handle_winusb, c_ubyte(pipe_id),
                                                read_buffer, c_ulong(length_buffer), byref(read), None)
         if result != 0:
             if read.value != length_buffer:
@@ -237,12 +249,12 @@ class WinUsbPy(object):
         policy_type = c_ulong(POLICY_TYPE.PIPE_TRANSFER_TIMEOUT)
         value_length = c_ulong(4)
         value = c_ulong(int(timeout * 1000))  # in ms
-        result = self.api.exec_function_winusb(WinUsb_SetPipePolicy, self.handle_winusb[self._index], c_ubyte(pipe_id),
+        result = self.api.exec_function_winusb(WinUsb_SetPipePolicy, self.handle_winusb, c_ubyte(pipe_id),
                                                policy_type, value_length, byref(value))
         return result
 
     def flush(self, pipe_id):
-        result = self.api.exec_function_winusb(WinUsb_FlushPipe, self.handle_winusb[self._index], c_ubyte(pipe_id))
+        result = self.api.exec_function_winusb(WinUsb_FlushPipe, self.handle_winusb, c_ubyte(pipe_id))
         return result
 
     def _overlapped_read_do(self,pipe_id):
@@ -251,14 +263,14 @@ class WinUsbPy(object):
         self.olread_ol.Offset = 0
         self.olread_ol.OffsetHigh = 0
         self.olread_ol.Pointer = 0
-        self.olread_ol.hEvent = 0                
-        result = self.api.exec_function_winusb(WinUsb_ReadPipe, self.handle_winusb, c_ubyte(pipe_id), self.olread_buf, 
+        self.olread_ol.hEvent = 0
+        result = self.api.exec_function_winusb(WinUsb_ReadPipe, self.handle_winusb, c_ubyte(pipe_id), self.olread_buf,
                                                c_ulong(self.olread_buflen), byref(c_ulong(0)), byref(self.olread_ol))
         if result != 0:
             return True
         else:
             return False
-                
+
     def overlapped_read_init(self, pipe_id, length_buffer):
         self.olread_ol = Overlapped()
         self.olread_buf = create_string_buffer(length_buffer)
